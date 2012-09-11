@@ -12,10 +12,6 @@
 #define LOOP_T  "libuv.loop"
 #define DEFAULT_LOOP_T  "libuv.default_loop"
 
-/* variable(s) */
-static libuv_loop_t libuv_default_loop;
-
-
 /* function(s) */
 
 static int new_loop (lua_State *L) {
@@ -67,7 +63,6 @@ static int default_loop (lua_State *L) {
     return 0;
   }
   TRACE("get default event loop (%p)\n", loop);
-  assert(loop == &libuv_default_loop);
   assert(loop->default_flag == 1);
 
   return 1;
@@ -260,6 +255,7 @@ LUALIB_API int luaopen_libuv_loop (lua_State *L) {
 LUALIB_API int luaopenL_libuv_loop (lua_State *L) {
   int size = 0;
   uv_loop_t *def_loop = NULL;
+  libuv_loop_t *libuv_default_loop;
 
   TRACE("arguments: L = %p\n", L);
   assert(L != NULL);
@@ -292,14 +288,15 @@ LUALIB_API int luaopenL_libuv_loop (lua_State *L) {
     /* TODO: error */
     return 1;
   }
-  libuv_default_loop.default_flag = 1;
-  libuv_default_loop.uvloop = def_loop;
-  lua_pushlightuserdata(L, &libuv_default_loop); /* [ table, userdata ] */
+
+  libuv_default_loop = (libuv_loop_t*)lua_newuserdata(L, sizeof(libuv_loop_t));
+  libuv_default_loop->default_flag = 1;
+  libuv_default_loop->uvloop = def_loop;
+
   luaL_getmetatable(L, LOOP_T); /* [ table, userdata, metatable ] */
   lua_setmetatable(L, -2); /* [ table, userdata ] */
-  TRACE("push light userdata (%p)\n", &libuv_default_loop);
   lua_setfield(L, LUA_REGISTRYINDEX, DEFAULT_LOOP_T); /* [ table ] */
-  TRACE("regist default event loop (%p) to lua registry index\n", libuv_default_loop.uvloop);
+  TRACE("regist default event loop (%p) to lua registry index\n", libuv_default_loop->uvloop);
   assert(lua_gettop(L) == 1);
 
   /* create Loop table */
